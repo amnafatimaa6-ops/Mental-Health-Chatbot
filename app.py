@@ -1,6 +1,5 @@
 import streamlit as st
 from llm_model import generate_response
-from safety import check_safety  # use this if you made safety.py
 
 st.title("🧠 AI Mental Health Chatbot")
 
