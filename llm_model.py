@@ -1,41 +1,19 @@
-import requests
+import openai
 import os
 
-API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
-
-headers = {
-    "Authorization": f"Bearer {os.getenv('HF_TOKEN')}"
-}
+openai.api_key = os.environ["OPENAI_API_KEY"]
 
 def generate_response(messages):
-
-    user_message = messages[-1]["content"]
-
-    prompt = f"""
-You are a compassionate mental health support assistant.
-Respond kindly and supportively.
-
-User: {user_message}
-Assistant:
-"""
-
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 120,
-            "temperature": 0.7
-        }
-    }
-
-    response = requests.post(API_URL, headers=headers, json=payload)
-
-    if response.status_code != 200:
-        return "I'm having trouble connecting to the AI right now."
-
-    result = response.json()
-
-    try:
-        text = result[0]["generated_text"]
-        return text.replace(prompt, "").strip()
-    except:
-        return "I'm here for you. Do you want to tell me what's going on?"
+    """
+    messages: list of dicts: [{"role":"user","content":"Hi"}, ...]
+    """
+    response = openai.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role":"system","content":"You are a kind mental health assistant. Always respond supportively."},
+            *messages
+        ],
+        max_tokens=200,
+        temperature=0.7
+    )
+    return response.choices[0].message.content
