@@ -1,4 +1,3 @@
-# app.py
 import streamlit as st
 from llm_model import generate_response
 
@@ -42,14 +41,11 @@ def display_chat():
 
 # ---------- PROCESS INPUT ----------
 if submitted and user_input:
-    # Add user message
     st.session_state.messages.append({"role": "user", "content": user_input})
 
-    # Generate AI reply
     with st.spinner("Thinking..."):
         assistant_reply = generate_response(st.session_state.messages)
 
-    # Add assistant reply
     st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
 
 display_chat()
