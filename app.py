@@ -1,3 +1,4 @@
+# app.py
 import streamlit as st
 from llm_model import generate_response
 
@@ -42,9 +43,6 @@ st.markdown(
 st.title("🧠 AI Mental Health Chatbot")
 st.write("Talk to me. I’m here to listen and respond kindly 💛")
 
-# ---------- INPUT ----------
-user_input = st.text_input("Your message:", key="input_text")
-
 # ---------- FUNCTION FOR DISPLAY ----------
 def display_chat():
     for msg in st.session_state.messages:
@@ -52,6 +50,9 @@ def display_chat():
             st.markdown(f'<div class="chat-message user">{msg["content"]}</div>', unsafe_allow_html=True)
         else:
             st.markdown(f'<div class="chat-message assistant">{msg["content"]}</div>', unsafe_allow_html=True)
+
+# ---------- INPUT ----------
+user_input = st.text_input("Your message:", key="input_text")
 
 # ---------- PROCESS USER INPUT ----------
 if user_input:
@@ -65,11 +66,8 @@ if user_input:
     # Add AI reply to memory
     st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
 
-    # Display chat
-    display_chat()
+    # Clear input after sending
+    st.session_state["input_text"] = ""
 
-    # Reset input
-    st.text_input("Your message:", key="input_text")  
-
-else:
-    display_chat()
+# ---------- DISPLAY CHAT ----------
+display_chat()
