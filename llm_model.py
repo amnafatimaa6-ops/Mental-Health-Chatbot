@@ -1,22 +1,19 @@
 # llm_model.py
-import os
-import requests
-from dotenv import load_dotenv
-import time
+from transformers import AutoProcessor, AutoModelForSeq2SeqLM
+import torch
 
-load_dotenv()  # Load HF_TOKEN from .env
+# Load processor and model
+processor = AutoProcessor.from_pretrained("Qwen/Qwen-3.5-9B")
+model = AutoModelForSeq2SeqLM.from_pretrained("Qwen/Qwen-3.5-9B")
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model.to(device)
 
-HF_TOKEN = os.getenv("HF_TOKEN")
-API_URL = "https://api-inference.huggingface.co/models/Qwen/Qwen3.5-9B"
-headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-
-def generate_response(messages, max_retries=2):
+def generate_response(messages):
     """
     messages: list of {"role": "user"/"assistant", "content": str}
-    Generates AI response from Hugging Face Qwen 3.5-9B.
-    Keeps it safe and retryable.
+    Generates AI response considering last few messages.
     """
-    # Build instruction prompt
+    # Build prompt
     prompt_lines = ["You are a kind and supportive mental health assistant. Respond empathetically.\n"]
     for m in messages[-4:]:  # last 4 messages for context
         role = "User" if m["role"] == "user" else "Assistant"
@@ -24,31 +21,18 @@ def generate_response(messages, max_retries=2):
     prompt_lines.append("Assistant:")
     prompt_text = "\n".join(prompt_lines)
 
-    payload = {
-        "inputs": prompt_text,
-        "parameters": {"max_new_tokens": 150, "temperature": 0.7}
-    }
+    # Prepare input tensors
+    inputs = processor.apply_chat_template(
+        [{"role":"user","content":[{"type":"text","text":prompt_text}]}],
+        add_generation_prompt=True,
+        tokenize=True,
+        return_dict=True,
+        return_tensors="pt"
+    ).to(device)
 
-    for attempt in range(max_retries + 1):
-        try:
-            response = requests.post(API_URL, headers=headers, json=payload, timeout=25)
-            response.raise_for_status()
-            result = response.json()
-            if isinstance(result, list) and "generated_text" in result[0]:
-                reply = result[0]["generated_text"]
-                # Remove prompt echo if present
-                if reply.startswith(prompt_text):
-                    reply = reply[len(prompt_text):].strip()
-                return reply
-            else:
-                return str(result)
-        except requests.exceptions.Timeout:
-            if attempt < max_retries:
-                time.sleep(2)
-                continue
-            return "⚠️ The AI is taking too long to respond. Please try again later."
-        except requests.exceptions.RequestException as e:
-            if attempt < max_retries:
-                time.sleep(2)
-                continue
-            return f"⚠️ Error contacting the AI model: {e}"
+    # Generate response
+    outputs = model.generate(**inputs, max_new_tokens=150)
+    
+    # Decode generated text
+    reply = processor.decode(outputs[0][inputs["input_ids"].shape[-1]:])
+    return reply.strip()
