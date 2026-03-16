@@ -1,4 +1,5 @@
 streamlit
-requests
-python-dotenv
-nltk
+torch
+transformers
+sentencepiece
+accelerate
