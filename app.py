@@ -51,23 +51,21 @@ def display_chat():
         else:
             st.markdown(f'<div class="chat-message assistant">{msg["content"]}</div>', unsafe_allow_html=True)
 
-# ---------- INPUT ----------
-user_input = st.text_input("Your message:", key="input_text")
+# ---------- CHAT FORM ----------
+with st.form(key="chat_form", clear_on_submit=True):
+    user_input = st.text_input("Your message:")
+    submitted = st.form_submit_button("Send")
 
-# ---------- PROCESS USER INPUT ----------
-if user_input:
-    # Add user message to memory
-    st.session_state.messages.append({"role": "user", "content": user_input})
+    if submitted and user_input.strip():
+        # Add user message to memory
+        st.session_state.messages.append({"role": "user", "content": user_input})
 
-    # Generate AI response considering conversation history
-    history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
-    assistant_reply = generate_response(history)
+        # Generate AI response considering conversation history
+        history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
+        assistant_reply = generate_response(history)
 
-    # Add AI reply to memory
-    st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
-
-    # Clear input after sending
-    st.session_state["input_text"] = ""
+        # Add AI reply to memory
+        st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
 
 # ---------- DISPLAY CHAT ----------
 display_chat()
