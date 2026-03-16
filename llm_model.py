@@ -1,42 +1,44 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
+import requests
+import os
 
-model_name = "microsoft/DialoGPT-medium"
+API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
 
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name)
+HF_TOKEN = os.getenv("HF_TOKEN")
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model.to(device)
-
-chat_history_ids = None
+headers = {
+    "Authorization": f"Bearer {HF_TOKEN}"
+}
 
 
 def generate_response(messages):
-    global chat_history_ids
 
-    user_input = messages[-1]["content"]
+    user_message = messages[-1]["content"]
 
-    new_input_ids = tokenizer.encode(
-        user_input + tokenizer.eos_token,
-        return_tensors="pt"
-    ).to(device)
+    prompt = f"""
+You are a compassionate mental health support assistant.
+Respond kindly and empathetically.
 
-    bot_input_ids = (
-        torch.cat([chat_history_ids, new_input_ids], dim=-1)
-        if chat_history_ids is not None
-        else new_input_ids
-    )
+User: {user_message}
+Assistant:
+"""
 
-    chat_history_ids = model.generate(
-        bot_input_ids,
-        max_length=1000,
-        pad_token_id=tokenizer.eos_token_id
-    )
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 120,
+            "temperature": 0.7
+        }
+    }
 
-    response = tokenizer.decode(
-        chat_history_ids[:, bot_input_ids.shape[-1]:][0],
-        skip_special_tokens=True
-    )
+    response = requests.post(API_URL, headers=headers, json=payload)
 
-    return response
+    if response.status_code != 200:
+        return "⚠️ The AI model is currently unavailable. Please try again."
+
+    result = response.json()
+
+    try:
+        text = result[0]["generated_text"]
+        return text.replace(prompt, "").strip()
+    except:
+        return "I'm here for you. Do you want to tell me what's been bothering you today?"
