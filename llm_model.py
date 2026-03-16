@@ -1,4 +1,3 @@
-# llm_model.py
 import requests
 import os
 from dotenv import load_dotenv
@@ -7,7 +6,10 @@ import time
 load_dotenv()  # load the .env file
 
 HF_TOKEN = os.getenv("HF_TOKEN")  # read your API key
-API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+
+# ✅ Updated to a working, small Hugging Face model
+API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-small"
+
 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 def generate_response(user_message, max_retries=2):
