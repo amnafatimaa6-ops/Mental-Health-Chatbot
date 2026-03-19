@@ -1,34 +1,25 @@
 import streamlit as st
-import base64
 from openai import OpenAI
 
+# Initialize OpenAI client
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
+# Page config
 st.set_page_config(page_title="Mental Health Chatbot")
 
-def get_base64(background):
-    with open(background, "rb") as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
-
-# Background
-bin_str = get_base64("background.png")
-
-st.markdown(f"""
+# Optional clean dark UI
+st.markdown("""
 <style>
-.main {{
-    background-image: url("data:image/png;base64,{bin_str}");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-}}
+.main {
+    background-color: #0e1117;
+}
 </style>
 """, unsafe_allow_html=True)
 
 # Session state
 st.session_state.setdefault('conversation_history', [])
 
-# Chat function
+# Generate chatbot response
 def generate_response(user_input):
     st.session_state['conversation_history'].append(
         {"role": "user", "content": user_input}
@@ -47,38 +38,46 @@ def generate_response(user_input):
 
     return ai_response
 
-# Affirmation
+# Generate affirmation
 def generate_affirmation():
-    prompt = "Give a short positive affirmation for stress."
+    prompt = "Give a short, kind, and uplifting affirmation for someone feeling stressed."
+    
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}]
     )
+
     return response.choices[0].message.content
 
-# Meditation
+# Generate meditation guide
 def generate_meditation_guide():
-    prompt = "Provide a short 5-minute guided meditation."
+    prompt = "Provide a short 5-minute guided meditation to relax and reduce stress."
+    
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}]
     )
+
     return response.choices[0].message.content
 
-# UI
+# UI Title
 st.title("Mental Health Support Agent")
 
+# Show chat history
 for msg in st.session_state['conversation_history']:
     role = "You" if msg['role'] == "user" else "AI"
     st.markdown(f"**{role}:** {msg['content']}")
 
+# User input
 user_message = st.text_input("How can I help you today?")
 
+# Chat response
 if user_message:
     with st.spinner("Thinking..."):
         ai_response = generate_response(user_message)
         st.markdown(f"**AI:** {ai_response}")
 
+# Buttons
 col1, col2 = st.columns(2)
 
 with col1:
