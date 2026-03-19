@@ -1,97 +1,53 @@
 import streamlit as st
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+from transformers import pipeline
 
 # Page config
-st.set_page_config(page_title="Mental Health Chatbot")
+st.set_page_config(page_title="Therapist Bot")
 
-st.markdown("""
-<style>
-.main {
-    background-color: #0e1117;
-    color: #ffffff;
-}
-</style>
-""", unsafe_allow_html=True)
+# Load sentiment model
+@st.cache_resource
+def load_sentiment():
+    return pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 
-# Load models (cached for speed)
-@st.cache_resource(show_spinner=True)
-def load_models():
-    # Chatbot: DialoGPT-small
-    tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-small")
-    model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-small")
-    chatbot = pipeline("text-generation", model=model, tokenizer=tokenizer)
-
-    # Sentiment analysis: DistilBERT
-    sentiment = pipeline(
-        "sentiment-analysis",
-        model="distilbert-base-uncased-finetuned-sst-2-english"
-    )
-    return chatbot, sentiment
-
-chatbot, sentiment = load_models()
+sentiment_analyzer = load_sentiment()
 
 # Session state for conversation
 st.session_state.setdefault('conversation_history', [])
 
-# Generate response
+# Simple rule-based therapist
 def generate_response(user_input):
-    # Sentiment check
-    sentiment_result = sentiment(user_input)[0]
-    sentiment_label = sentiment_result['label']
+    sentiment = sentiment_analyzer(user_input)[0]['label']
+    response = ""
 
-    # Optional: empathetic prefix if negative
-    if sentiment_label == "NEGATIVE":
-        prompt = f"I'm an empathetic assistant. Respond kindly: {user_input}"
+    # Keyword-based rules
+    user_lower = user_input.lower()
+    if any(word in user_lower for word in ["sad", "depressed", "unhappy"]):
+        response = "I'm here for you. Can you tell me more about what’s making you feel this way?"
+    elif any(word in user_lower for word in ["stress", "overwhelmed", "anxious", "worried"]):
+        response = "It sounds stressful. Try taking a slow breath with me: inhale… exhale… How do you feel now?"
+    elif any(word in user_lower for word in ["happy", "good", "great"]):
+        response = "I’m glad to hear that! Keep that positive energy going. 🌟"
     else:
-        prompt = user_input
+        # Default based on sentiment
+        if sentiment == "NEGATIVE":
+            response = "I see. That sounds tough. Want to talk more about it?"
+        else:
+            response = "I understand. Tell me more or take a deep breath and relax."
 
-    # Generate response (short for cloud efficiency)
-    response = chatbot(prompt, max_length=100, do_sample=True)
-    ai_response = response[0]['generated_text']
-
-    # Store conversation
+    # Save to conversation
     st.session_state['conversation_history'].append({"role": "user", "content": user_input})
-    st.session_state['conversation_history'].append({"role": "assistant", "content": ai_response})
-
-    return ai_response
-
-# Generate positive affirmation
-def generate_affirmation():
-    prompt = "Give a short, kind, and uplifting affirmation for someone feeling stressed."
-    response = chatbot(prompt, max_length=50, do_sample=True)
-    return response[0]['generated_text']
-
-# Generate guided meditation
-def generate_meditation_guide():
-    prompt = "Provide a short 5-minute guided meditation to help someone relax."
-    response = chatbot(prompt, max_length=150, do_sample=True)
-    return response[0]['generated_text']
+    st.session_state['conversation_history'].append({"role": "assistant", "content": response})
+    return response
 
 # UI
-st.title("Mental Health Support Agent")
+st.title("Therapist Bot (Sentiment + Rules)")
 
-# Show chat history
 for msg in st.session_state['conversation_history']:
     role = "You" if msg['role'] == "user" else "AI"
     st.markdown(f"**{role}:** {msg['content']}")
 
-# User input
-user_message = st.text_input("How can I help you today?")
-
+user_message = st.text_input("How are you feeling today?")
 if user_message:
     with st.spinner("Thinking..."):
         ai_response = generate_response(user_message)
         st.markdown(f"**AI:** {ai_response}")
-
-# Buttons for extra features
-col1, col2 = st.columns(2)
-
-with col1:
-    if st.button("Give me a positive affirmation"):
-        affirmation = generate_affirmation()
-        st.markdown(f"**Affirmation:** {affirmation}")
-
-with col2:
-    if st.button("Give me a guided meditation"):
-        meditation_guide = generate_meditation_guide()
-        st.markdown(f"**Guided Meditation:** {meditation_guide}")
